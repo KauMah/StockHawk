@@ -15,10 +15,13 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
 import android.text.InputType;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 import com.afollestad.materialdialogs.MaterialDialog;
 import com.sam_chordas.android.stockhawk.R;
@@ -34,6 +37,7 @@ import com.google.android.gms.gcm.PeriodicTask;
 import com.google.android.gms.gcm.Task;
 import com.melnykov.fab.FloatingActionButton;
 import com.sam_chordas.android.stockhawk.touch_helper.SimpleItemTouchHelperCallback;
+import com.squareup.okhttp.internal.Util;
 
 public class MyStocksActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor>{
 
@@ -51,6 +55,7 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
   private QuoteCursorAdapter mCursorAdapter;
   private Context mContext;
   private Cursor mCursor;
+  private RecyclerView mRecyclerView;
   boolean isConnected;
 
   @Override
@@ -76,23 +81,29 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
         networkToast();
       }
     }
-    RecyclerView recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
-    recyclerView.setLayoutManager(new LinearLayoutManager(this));
+    mRecyclerView = (RecyclerView) findViewById(R.id.recycler_view);
+    mRecyclerView.setLayoutManager(new LinearLayoutManager(this));
     getLoaderManager().initLoader(CURSOR_LOADER_ID, null, this);
 
     mCursorAdapter = new QuoteCursorAdapter(this, null);
-    recyclerView.addOnItemTouchListener(new RecyclerViewItemClickListener(this,
+    mRecyclerView.addOnItemTouchListener(new RecyclerViewItemClickListener(this,
             new RecyclerViewItemClickListener.OnItemClickListener() {
               @Override public void onItemClick(View v, int position) {
                 //TODO:
-                // do something on item click
+                Intent intent = new Intent(getBaseContext(), StockDetailActivity.class);
+                  LinearLayout linearLayout = (LinearLayout) mRecyclerView.getChildAt(position);
+                  TextView symbolView = (TextView) linearLayout.findViewById(R.id.stock_symbol);
+                  Log.v(MyStocksActivity.class.getSimpleName(), symbolView.getText().toString());
+                  intent.putExtra("symbol", symbolView.getText()).toString(); //Not sure if toString is necessary here, but including it anyway (Point of possible error)
+                  startActivity(intent);
+
               }
             }));
-    recyclerView.setAdapter(mCursorAdapter);
+    mRecyclerView.setAdapter(mCursorAdapter);
 
 
     FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-    fab.attachToRecyclerView(recyclerView);
+    fab.attachToRecyclerView(mRecyclerView);
     fab.setOnClickListener(new View.OnClickListener() {
       @Override public void onClick(View v) {
         if (isConnected){
@@ -131,7 +142,7 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
 
     ItemTouchHelper.Callback callback = new SimpleItemTouchHelperCallback(mCursorAdapter);
     mItemTouchHelper = new ItemTouchHelper(callback);
-    mItemTouchHelper.attachToRecyclerView(recyclerView);
+    mItemTouchHelper.attachToRecyclerView(mRecyclerView);
 
     mTitle = getTitle();
     if (isConnected){
@@ -163,7 +174,20 @@ public class MyStocksActivity extends AppCompatActivity implements LoaderManager
   }
 
   public void networkToast(){
-    Toast.makeText(mContext, getString(R.string.network_toast), Toast.LENGTH_SHORT).show();
+
+    Cursor c = getContentResolver().query(QuoteProvider.Quotes.CONTENT_URI,
+            null,
+            null,
+            null,
+            null,
+            null);
+      if (c.moveToFirst() == false){
+          Toast.makeText(mContext, getString(R.string.network_toast_blank), Toast.LENGTH_SHORT).show();
+      } else {
+          Toast.makeText(mContext, getString(R.string.network_toast_full), Toast.LENGTH_SHORT).show();
+      }
+      c.close();
+
   }
 
   public void restoreActionBar() {
