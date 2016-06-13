@@ -2,14 +2,17 @@ package com.sam_chordas.android.stockhawk.ui;
 
 import android.app.Fragment;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 import com.db.chart.model.LineSet;
+import com.db.chart.view.LineChartView;
 import com.sam_chordas.android.stockhawk.R;
 
 import org.json.JSONArray;
@@ -23,15 +26,15 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.TimeZone;
 
 
 public class StockDetailActivityFragment extends Fragment {
     private String symbol;
-    private ArrayList<Double> chartable = new ArrayList<>();
     private LineSet mLineSet;
+    private LineChartView mStockChart;
+    private TextView symbolView;
 
     public StockDetailActivityFragment() {
     }
@@ -41,9 +44,15 @@ public class StockDetailActivityFragment extends Fragment {
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_stock_detail, container, false);
 
+        mStockChart = (LineChartView) rootView.findViewById(R.id.linechart);
+        symbolView = (TextView) rootView.findViewById(R.id.stock_title_view);
+        symbolView.setText(symbol);
+
+
         Intent intent = getActivity().getIntent();
         symbol = intent.getStringExtra("symbol");
         new FetchHistoricDataTask().execute(symbol);
+
 
         return rootView;
     }
@@ -56,13 +65,11 @@ public class StockDetailActivityFragment extends Fragment {
             JSONObject results = query.getJSONObject("results");
             JSONArray quote = results.getJSONArray("quote");
             double[] returnable = new double[quote.length()];
-            Log.v("quote length", quote.length() + "");
 
 
             for (int i = 0; i < quote.length(); i++){
                 JSONObject curr = quote.optJSONObject(i);
                 double addMe = curr.getDouble("Close");
-                Log.v("Adding these ", addMe + "");
 
                 returnable[i] = addMe;
             }
@@ -88,13 +95,7 @@ public class StockDetailActivityFragment extends Fragment {
             String prevDate = sdf.format(calStart.getTime());
             String currDate = sdf.format(calEnd.getTime());
 
-
             wholeUrl = wholeUrl + currDate + beforeEnd + prevDate + theRest;
-
-            Log.v("url ", wholeUrl);
-            Log.v("url ", wholeUrl);
-
-
 
             HttpURLConnection urlConnection = null;
             BufferedReader reader = null;
@@ -151,7 +152,41 @@ public class StockDetailActivityFragment extends Fragment {
 
         @Override
         protected void onPostExecute(double[] doubles) {
+            int maxVal = 0;
+            int minVal = 10000000;
+            int stepVal;
             super.onPostExecute(doubles);
+            mLineSet = new LineSet();
+            mLineSet.setColor(Color.WHITE);
+            for (int i = 0; i < doubles.length; i++){
+                mLineSet.addPoint(i + "",(float) doubles[i]);
+                if (doubles[i] > maxVal)
+                    maxVal = (int) doubles[i];
+                if (doubles[i] < minVal)
+                    minVal = (int) doubles[i];
+            }
+
+            stepVal = (maxVal - minVal)/5;
+            if (stepVal < 1)
+                stepVal = 1;
+            if ((maxVal - minVal)/10 < 1){
+                minVal--;
+                maxVal++;
+            } else{
+                minVal -= (maxVal - minVal)/10;
+                int temp = minVal;
+                do {
+                    temp += 10;
+                }while (temp < maxVal);
+                maxVal = temp;
+            }
+
+            mStockChart.setAxisBorderValues(minVal, maxVal, stepVal);
+            mStockChart.setStep(stepVal);
+            mStockChart.setAxisColor(Color.WHITE);
+            mStockChart.setLabelsColor(Color.WHITE);
+            mStockChart.addData(mLineSet);
+            mStockChart.show();
 
         }
     }

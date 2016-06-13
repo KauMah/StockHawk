@@ -33,14 +33,22 @@ public class Utils {
         if (count == 1){
           jsonObject = jsonObject.getJSONObject("results")
               .getJSONObject("quote");
-          batchOperations.add(buildBatchOperation(jsonObject));
+          if (jsonObject == null){
+            return null;
+          }
+          if (!(buildBatchOperation(jsonObject) == null)){
+            batchOperations.add(buildBatchOperation(jsonObject));
+          }
+
         } else{
           resultsArray = jsonObject.getJSONObject("results").getJSONArray("quote");
 
           if (resultsArray != null && resultsArray.length() != 0){
             for (int i = 0; i < resultsArray.length(); i++){
               jsonObject = resultsArray.getJSONObject(i);
-              batchOperations.add(buildBatchOperation(jsonObject));
+              if (!(buildBatchOperation(jsonObject) == null)){
+                batchOperations.add(buildBatchOperation(jsonObject));
+              }
             }
           }
         }
@@ -52,11 +60,16 @@ public class Utils {
   }
 
   public static String truncateBidPrice(String bidPrice){
-    bidPrice = String.format("%.2f", Float.parseFloat(bidPrice));
-    return bidPrice;
+    if (!bidPrice.equals("null")) {
+      bidPrice = String.format("%.2f", Float.parseFloat(bidPrice));
+      return bidPrice;
+    }
+    return null;
   }
 
   public static String truncateChange(String change, boolean isPercentChange){
+    if (change.equals("null"))
+      return null;
     String weight = change.substring(0,1);
     String ampersand = "";
     if (isPercentChange){
@@ -78,6 +91,8 @@ public class Utils {
         QuoteProvider.Quotes.CONTENT_URI);
     try {
       String change = jsonObject.getString("Change");
+      if (change.equals("null"))
+        return null;
       builder.withValue(QuoteColumns.SYMBOL, jsonObject.getString("symbol"));
       builder.withValue(QuoteColumns.BIDPRICE, truncateBidPrice(jsonObject.getString("Bid")));
       builder.withValue(QuoteColumns.PERCENT_CHANGE, truncateChange(
