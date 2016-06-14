@@ -3,6 +3,7 @@ package com.sam_chordas.android.stockhawk.ui;
 import android.app.Fragment;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Paint;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
@@ -11,7 +12,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.db.chart.Tools;
 import com.db.chart.model.LineSet;
+import com.db.chart.view.AxisController;
+import com.db.chart.view.ChartView;
 import com.db.chart.view.LineChartView;
 import com.sam_chordas.android.stockhawk.R;
 
@@ -34,7 +38,6 @@ public class StockDetailActivityFragment extends Fragment {
     private String symbol;
     private LineSet mLineSet;
     private LineChartView mStockChart;
-    private TextView symbolView;
 
     public StockDetailActivityFragment() {
     }
@@ -45,8 +48,20 @@ public class StockDetailActivityFragment extends Fragment {
         View rootView = inflater.inflate(R.layout.fragment_stock_detail, container, false);
 
         mStockChart = (LineChartView) rootView.findViewById(R.id.linechart);
-        symbolView = (TextView) rootView.findViewById(R.id.stock_title_view);
-        symbolView.setText(symbol);
+
+        Paint gridPaint = new Paint();
+        gridPaint.setColor(getResources().getColor(R.color.material_blue_500));
+        gridPaint.setStyle(Paint.Style.STROKE);
+        gridPaint.setStrokeWidth(Tools.fromDpToPx(1f));
+        mStockChart.setBorderSpacing(1)
+                .setXLabels(AxisController.LabelPosition.OUTSIDE)
+                .setYLabels(AxisController.LabelPosition.OUTSIDE)
+                .setLabelsColor(Color.WHITE)
+                .setXAxis(false)
+                .setYAxis(false)
+                .setBorderSpacing(Tools.fromDpToPx(5))
+                .setGrid(ChartView.GridType.HORIZONTAL, gridPaint);
+
 
 
         Intent intent = getActivity().getIntent();
@@ -153,7 +168,7 @@ public class StockDetailActivityFragment extends Fragment {
         @Override
         protected void onPostExecute(double[] doubles) {
             int maxVal = 0;
-            int minVal = 10000000;
+            int minVal = 100000000;
             int stepVal;
             super.onPostExecute(doubles);
             mLineSet = new LineSet();
@@ -166,25 +181,26 @@ public class StockDetailActivityFragment extends Fragment {
                     minVal = (int) doubles[i];
             }
 
-            stepVal = (maxVal - minVal)/5;
-            if (stepVal < 1)
-                stepVal = 1;
-            if ((maxVal - minVal)/10 < 1){
-                minVal--;
-                maxVal++;
-            } else{
-                minVal -= (maxVal - minVal)/10;
-                int temp = minVal;
-                do {
-                    temp += 10;
-                }while (temp < maxVal);
-                maxVal = temp;
+
+//            Log.v("prechange", "" + maxVal + " " + minVal);
+            if (maxVal % 10 !=0){
+                maxVal += (10 - maxVal%10);
             }
+            if (minVal % 10 !=0){
+                minVal += (10 - minVal%10);
+            }
+//            Log.v("postchange", "" + maxVal + " " + minVal);
+            stepVal = (maxVal - minVal)/5;
+            if (stepVal == 0){
+                stepVal = maxVal/10;
+                maxVal += 10;
+                minVal -= 10;
+            }
+//            Log.v("postchange", "" + stepVal);
+
 
             mStockChart.setAxisBorderValues(minVal, maxVal, stepVal);
             mStockChart.setStep(stepVal);
-            mStockChart.setAxisColor(Color.WHITE);
-            mStockChart.setLabelsColor(Color.WHITE);
             mStockChart.addData(mLineSet);
             mStockChart.show();
 
